@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>1Win Prediction Demo</title>
+  <style>
+    :root {
+      --bg: #f9f9f9;
+      --text: #333;
+      --card-bg: #fff;
+      --border: #ddd;
+      --secondary: #666;
+      --button-bg: #007BFF;
+      --button-text: #fff;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #121212;
+        --text: #f5f5f5;
+        --card-bg: #1e1e1e;
+        --border: #333;
+        --secondary: #aaa;
+        --button-bg: #1a73e8;
+        --button-text: #fff;
+      }
+    }
+    body { font-family: Arial, sans-serif; background: var(--bg); margin: 0; padding: 20px; color: var(--text); }
+    .container { max-width: 500px; margin: auto; background: var(--card-bg); padding: 20px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+    h1 { font-size: 20px; margin-bottom: 10px; }
+    p { font-size: 14px; color: var(--secondary); }
+    .prediction { text-align: center; padding: 20px; border: 1px solid var(--border); border-radius: 6px; margin-top: 15px; min-height: 60px; }
+    .label { font-size: 18px; font-weight: bold; opacity: 0; transform: scale(0.9); transition: opacity 0.4s ease, transform 0.4s ease; }
+    .label.show { opacity: 1; transform: scale(1); }
+    .confidence { font-size: 14px; margin-top: 5px; color: var(--secondary); opacity: 0; transition: opacity 0.4s ease; }
+    .confidence.show { opacity: 1; }
+    .thinking { font-size: 14px; color: var(--secondary); margin-top: 10px; }
+    textarea { width: 100%; height: 80px; margin-top: 10px; padding: 8px; border: 1px solid var(--border); border-radius: 4px; resize: none; background: var(--bg); color: var(--text); }
+    button { margin-top: 10px; padding: 10px; border: none; border-radius: 4px; background: var(--button-bg); color: var(--button-text); font-size: 14px; cursor: pointer; }
+    button:disabled { background: #ccc; cursor: not-allowed; }
+    .log { font-size: 12px; margin-top: 15px; padding: 10px; background: var(--bg); border-radius: 4px; height: 100px; overflow-y: auto; border: 1px solid var(--border); }
+    .controls { display: flex; gap: 10px; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>1Win Prediction Demo</h1>
+    <p>For entertainment only — not a real predictor.</p>
+
+    <textarea id="history" placeholder="Enter recent results (e.g., 1.5, 2.0, 3.1)"></textarea>
+    <div class="controls">
+      <button id="predictBtn">Generate Prediction</button>
+      <button id="toggleLiveBtn">Start Live</button>
+    </div>
+
+    <div class="prediction">
+      <div class="thinking" id="thinking"></div>
+      <div class="label" id="predLabel">—</div>
+      <div class="confidence" id="predConf">—%</div>
+    </div>
+
+    <div class="log" id="log"></div>
+  </div>
+
+  <script>
+    const predLabel = document.getElementById('predLabel');
+    const predConf = document.getElementById('predConf');
+    const thinking = document.getElementById('thinking');
+    const log = document.getElementById('log');
+    const toggleLiveBtn = document.getElementById('toggleLiveBtn');
+    let liveInterval = null;
+
+    function parseHistory(text) {
+      const nums = text.match(/\d+(?:\.\d+)?/g);
+      return nums ? nums.map(Number) : [];
+    }
+
+    function makePrediction(history) {
+      if (history.length === 0) return { label: 'SKIP', confidence: 30 };
+      const mean = history.reduce((a,b) => a+b, 0) / history.length;
+      let label = 'SKIP';
+      if (mean > 2) label = 'BET HIGH';
+      else if (mean < 1.6) label = 'BET LOW';
+      const confidence = Math.min(95, Math.max(20, Math.round(mean * 40)));
+      return { label, confidence };
+    }
+
+    function typeThinking(callback) {
+      const dots = ['Thinking.', 'Thinking..', 'Thinking...'];
+      let i = 0;
+      thinking.textContent = dots[0];
+      const interval = setInterval(() => {
+        thinking.textContent = dots[i % dots.length];
+        i++;
+      }, 400);
+      setTimeout(() => {
+        clearInterval(interval);
+        thinking.textContent = '';
+        callback();
+      }, 1200);
+    }
+
+    function showPrediction(pred) {
+      predLabel.classList.remove('show');
+      predConf.classList.remove('show');
+      setTimeout(() => {
+        predLabel.textContent = pred.label;
+        predConf.textContent = pred.confidence + '%';
+        predLabel.classList.add('show');
+        predConf.classList.add('show');
+      }, 100);
+    }
+
+    function generatePrediction() {
+      const history = parseHistory(document.getElementById('history').value);
+      typeThinking(() => {
+        const pred = makePrediction(history);
+        showPrediction(pred);
+        log.innerHTML = `<div>Prediction: ${pred.label} (${pred.confidence}%)</div>` + log.innerHTML;
+      });
+    }
+
+    document.getElementById('predictBtn').addEventListener('click', generatePrediction);
+
+    toggleLiveBtn.addEventListener('click', () => {
+      if (liveInterval) {
+        clearInterval(liveInterval);
+        liveInterval = null;
+        toggleLiveBtn.textContent = 'Start Live';
+      } else {
+        generatePrediction();
+        liveInterval = setInterval(generatePrediction, 4000);
+        toggleLiveBtn.textContent = 'Stop Live';
+      }
+    });
+  </script>
+</body>
+</html>
